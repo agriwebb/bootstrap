@@ -26,8 +26,8 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.debounce', 'ui.bootstrap
     };
   }])
 
-  .controller('UibTypeaheadController', ['$scope', '$element', '$attrs', '$compile', '$parse', '$q', '$timeout', '$document', '$window', '$rootScope', '$$debounce', '$uibPosition', 'uibTypeaheadParser',
-    function(originalScope, element, attrs, $compile, $parse, $q, $timeout, $document, $window, $rootScope, $$debounce, $position, typeaheadParser) {
+  .controller('UibTypeaheadController', ['$scope', '$element', '$attrs', '$compile', '$parse', '$q', '$timeout', '$document', '$window', '$rootScope', '$$debounce', '$uibPosition', 'uibTypeaheadParser', '$injector', '$log',
+    function(originalScope, element, attrs, $compile, $parse, $q, $timeout, $document, $window, $rootScope, $$debounce, $position, typeaheadParser, $injector, $log) {
     var HOT_KEYS = [9, 13, 27, 38, 40];
     var eventDebounceTime = 200;
     var modelCtrl, ngModelOptions;
@@ -78,6 +78,12 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.debounce', 'ui.bootstrap
       originalScope.$eval(attrs.typeaheadAppendTo) : null;
 
     var focusFirst = originalScope.$eval(attrs.typeaheadFocusFirst) !== false;
+
+    var focusFirstMatch = originalScope.$eval(attrs.typeaheadFocusFirstMatch) === true;
+
+    if (focusFirst && focusFirstMatch) {
+      $log.warn('typeahead-focus-first and typeahead-focus-first-match used in conjunction'); // Warn the user about invalid settings
+    }
 
     //If input matches an item of the list exactly, select it automatically
     var selectOnExact = attrs.typeaheadSelectOnExact ? originalScope.$eval(attrs.typeaheadSelectOnExact) : false;
@@ -217,6 +223,13 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.debounce', 'ui.bootstrap
       return false;
     };
 
+    // TODO don't duplicate this...
+    var isSanitizePresent = $injector.has('$sanitize');
+
+    function containsHtml(matchItem) {
+      return /<.*>/g.test(matchItem);
+    }
+
     var getMatchesAsync = function(inputValue, evt) {
       var locals = {$viewValue: inputValue};
       isLoadingSetter(originalScope, true);
@@ -228,6 +241,7 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.debounce', 'ui.bootstrap
         if (onCurrentRequest && hasFocus) {
           if (matches && matches.length > 0) {
             scope.activeIdx = focusFirst ? 0 : -1;
+
             isNoResultsSetter(originalScope, false);
             scope.matches.length = 0;
 
@@ -239,6 +253,21 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.debounce', 'ui.bootstrap
                 label: parserResult.viewMapper(scope, locals),
                 model: matches[i]
               });
+            }
+
+            if (scope.activeIdx === -1 && focusFirstMatch && inputValue) {
+              for (var j = 0; j < scope.matches.length; j++) {
+                var label = scope.matches[j].label;
+
+                if (!isSanitizePresent && containsHtml(label)) {
+                  $log.warn('Unsafe use of typeahead please use ngSanitize'); // Warn the user about the danger
+                }
+
+                if (label && label.toString().toLowerCase().indexOf(inputValue.toLowerCase()) !== -1) {
+                  scope.activeIdx = j;
+                  break;
+                }
+              }
             }
 
             scope.query = inputValue;
