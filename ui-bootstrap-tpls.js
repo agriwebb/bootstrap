@@ -6751,10 +6751,6 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.debounce', 'ui.bootstrap
 
     var focusFirstMatch = originalScope.$eval(attrs.typeaheadFocusFirstMatch) === true;
 
-    if (focusFirst && focusFirstMatch) {
-      $log.warn('typeahead-focus-first and typeahead-focus-first-match used in conjunction'); // Warn the user about invalid settings
-    }
-
     //If input matches an item of the list exactly, select it automatically
     var selectOnExact = attrs.typeaheadSelectOnExact ? originalScope.$eval(attrs.typeaheadSelectOnExact) : false;
 
@@ -6925,7 +6921,7 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.debounce', 'ui.bootstrap
               });
             }
 
-            if (scope.activeIdx === -1 && focusFirstMatch && inputValue) {
+            if (focusFirstMatch && inputValue) {
               for (var j = 0; j < scope.matches.length; j++) {
                 var label = scope.matches[j].label;
 
